@@ -1,0 +1,13 @@
+1、fuintBackend是java后端源码（包括后台、小程序、收银端的接口）。对其下目录说明如下：
+     1）configure：后端配置文件目录。
+     2）db：全部的数据库SQL。
+     3）fuint-application：项目的应用代码：包含后台接口和小程序接口的全部代码。
+     4）fuint-framework：项目框架代码。
+     5）fuint-repository：项目数据库相关代码。
+     6）fuint-utils：项目工具类代码。
+
+2、fuintUniapp是会员端的前端源码，前端使用HBuilderX导入工程后，要更换小程序id。
+
+3、fuintAdmin是后台的前端源码。
+
+4、fuintCashierWeb是收银的前端源码。
