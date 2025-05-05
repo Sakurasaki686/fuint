@@ -29,4 +29,8 @@ public interface MtGoodsMapper extends BaseMapper<MtGoods> {
 
     List<GoodsTopBean> getGoodsSaleTopList(@Param("merchantId") Integer merchantId, @Param("storeId") Integer storeId, @Param("startTime") Date startTime, @Param("endTime") Date endTime);
 
+    List<MtGoods> searchForRecommendation(@Param("keyword") String keyword,
+                                          @Param("limit") int limit,
+                                          @Param("storeId") Integer storeId,
+                                          @Param("merchantId") Integer merchantId);
 }

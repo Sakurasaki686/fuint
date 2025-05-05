@@ -1,0 +1,216 @@
+package com.fuint.common.service.impl;
+
+import com.fasterxml.jackson.core.JsonProcessingException; // 导入
+import com.fuint.common.service.OllamaService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus; // 导入 HttpStatus
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException; // 更具体的异常
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.RestTemplate;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class OllamaServiceImpl implements OllamaService {
+
+    private static final Logger logger = LoggerFactory.getLogger(OllamaServiceImpl.class);
+    private final RestTemplate restTemplate;
+    private final String ollamaApiUrl;
+    private final ObjectMapper objectMapper; // 注入或创建 ObjectMapper 以便复用
+
+    public OllamaServiceImpl(@Value("${ollama.api.url}") String ollamaApiUrl) {
+        this.ollamaApiUrl = ollamaApiUrl;
+        this.restTemplate = new RestTemplate();
+
+        this.objectMapper = new ObjectMapper(); // 创建 ObjectMapper
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter(objectMapper);
+        converter.setSupportedMediaTypes(Arrays.asList(
+                MediaType.APPLICATION_JSON,
+                MediaType.valueOf("application/x-ndjson")
+        ));
+        restTemplate.getMessageConverters().add(converter);
+    }
+
+    @Override
+    public String generateText(String prompt, String model) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        String modelToUse = model != null && !model.isEmpty() ? model : "qwen2.5:1.5b";
+        requestBody.put("model", modelToUse);
+        requestBody.put("prompt", prompt);
+        requestBody.put("stream", false);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+        String requestUrl = this.ollamaApiUrl;
+
+        try {
+            logger.info("向 Ollama 发送请求: URL={}, Body={}", requestUrl, requestBody);
+            // 直接用 postForObject 并期望 Map
+            Map response = restTemplate.postForObject(requestUrl, requestEntity, Map.class);
+            logger.info("Ollama 返回的完整数据: {}", response);
+
+            if (response != null && response.containsKey("response")) {
+                Object responseObject = response.get("response");
+                return (responseObject instanceof String) ? (String) responseObject : String.valueOf(responseObject);
+            } else {
+                logger.warn("Ollama 响应中未找到 'response' 字段，原始响应: {}", response);
+                // 尝试从其他可能的字段获取信息，或者返回空
+                if (response != null && response.containsKey("error")) {
+                    logger.error("Ollama 返回了错误信息: {}", response.get("error"));
+                    return "AI 服务返回错误: " + response.get("error");
+                }
+                return ""; // 或者返回一个标准的空响应提示
+            }
+        } catch (HttpClientErrorException e) { // 捕获更具体的客户端错误异常
+            logger.error("请求 Ollama 时发生客户端错误，URL: {}, 状态码: {}, 响应体: {}", requestUrl, e.getStatusCode(), e.getResponseBodyAsString(), e);
+
+            String responseBody = e.getResponseBodyAsString();
+
+            // **** 核心改动：检查 404 状态码，并检查响应体是否包含 "error" 和 "not found" ****
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND && responseBody != null && responseBody.contains("\"error\"")) {
+                // 尝试解析 JSON 以获得更精确的错误消息（可选但更好）
+                try {
+                    Map<String, String> errorResponse = objectMapper.readValue(responseBody, Map.class);
+                    String errorMessage = errorResponse.get("error");
+                    if (errorMessage != null && errorMessage.toLowerCase().contains("not found")) {
+                        // 确认是模型未找到的错误
+                        return "抱歉，您选择的模型 \"" + modelToUse + "\" 尚未在服务器上安装或加载。请选择其他模型。";
+                    }
+                } catch (JsonProcessingException jsonEx) {
+                    logger.warn("无法解析 Ollama 的 404 错误响应体 JSON: {}", responseBody, jsonEx);
+                    // 即使无法解析 JSON，如果包含关键字，也给个提示
+                    if (responseBody.toLowerCase().contains("not found")) {
+                        return "抱歉，请求的模型 \"" + modelToUse + "\" 不存在或无法找到。";
+                    }
+                }
+                // 如果是 404 但内容不匹配，则返回通用 404 错误
+                return "请求的资源未找到 (404)。";
+
+            } else if (responseBody != null && responseBody.toLowerCase().contains("failed to load model")) {
+                // 对 "failed to load model" 也可以做类似处理，可能对应 500 错误码？需要确认
+                return "抱歉，模型 \"" + modelToUse + "\" 加载失败。请选择其他模型或联系管理员。";
+            }
+
+            // 对于其他 HttpClientErrorException (4xx 错误)
+            return "请求处理失败: HTTP " + e.getStatusCode() + " - " + (responseBody.isEmpty() ? e.getStatusText() : responseBody);
+
+        } catch (RestClientResponseException e) { // 捕获其他 RestTemplate 异常 (例如 5xx)
+            logger.error("请求 Ollama 时发生服务端或未知错误，URL: {}, 状态码: {}, 响应体: {}", requestUrl, e.getRawStatusCode(), e.getResponseBodyAsString(), e);
+            String responseBody = e.getResponseBodyAsString();
+            // 可以增加对 500 错误等的特定处理
+            if (responseBody != null && responseBody.toLowerCase().contains("failed to load model")) {
+                return "抱歉，模型 \"" + modelToUse + "\" 在服务器端加载失败。请稍后再试或联系管理员。";
+            }
+            return "与AI服务通信时发生错误: HTTP " + e.getRawStatusCode() + " - " + (responseBody.isEmpty() ? "Server Error" : responseBody);
+        } catch (Exception e) { // 捕获所有其他异常 (例如网络连接超时)
+            logger.error("处理 Ollama 请求时发生未知错误，URL: {}", requestUrl, e);
+            return "处理您的请求时发生网络或未知错误: " + e.getMessage();
+        }
+    }
+
+    @Override
+    public String generateText(String prompt, String model, List<Map<String, String>> history) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> requestBody = new HashMap<>();
+        String modelToUse = model != null && !model.isEmpty() ? model : "qwen2.5:1.5b";
+        requestBody.put("model", modelToUse);
+
+        // 构建包含历史记录的提示
+        StringBuilder fullPrompt = new StringBuilder();
+
+        // 添加历史对话
+        if (history != null && !history.isEmpty()) {
+            for (Map<String, String> message : history) {
+                String role = message.get("role");
+                String content = message.get("content");
+
+                if ("user".equals(role)) {
+                    fullPrompt.append("用户: ").append(content).append("\n\n");
+                } else if ("assistant".equals(role)) {
+                    fullPrompt.append("助手: ").append(content).append("\n\n");
+                }
+            }
+        }
+
+        // 添加当前提问
+        fullPrompt.append("用户: ").append(prompt).append("\n\n");
+        fullPrompt.append("助手: ");
+
+        requestBody.put("prompt", fullPrompt.toString());
+        requestBody.put("stream", false);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+        String requestUrl = this.ollamaApiUrl;
+
+        try {
+            logger.info("向 Ollama 发送带历史记录的请求: URL={}, 历史记录数量={}", requestUrl, history != null ? history.size() : 0);
+            logger.debug("完整提示内容: {}", fullPrompt.toString());
+
+            // 发送请求并获取响应
+            Map response = restTemplate.postForObject(requestUrl, requestEntity, Map.class);
+            logger.info("Ollama 返回的完整数据: {}", response);
+
+            if (response != null && response.containsKey("response")) {
+                Object responseObject = response.get("response");
+                return (responseObject instanceof String) ? (String) responseObject : String.valueOf(responseObject);
+            } else {
+                logger.warn("Ollama 响应中未找到 'response' 字段，原始响应: {}", response);
+                if (response != null && response.containsKey("error")) {
+                    logger.error("Ollama 返回了错误信息: {}", response.get("error"));
+                    return "AI 服务返回错误: " + response.get("error");
+                }
+                return "";
+            }
+        } catch (HttpClientErrorException e) {
+            logger.error("请求 Ollama 时发生客户端错误，URL: {}, 状态码: {}, 响应体: {}", requestUrl, e.getStatusCode(), e.getResponseBodyAsString(), e);
+
+            String responseBody = e.getResponseBodyAsString();
+
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND && responseBody != null && responseBody.contains("\"error\"")) {
+                try {
+                    Map<String, String> errorResponse = objectMapper.readValue(responseBody, Map.class);
+                    String errorMessage = errorResponse.get("error");
+                    if (errorMessage != null && errorMessage.toLowerCase().contains("not found")) {
+                        return "抱歉，您选择的模型 \"" + modelToUse + "\" 尚未在服务器上安装或加载。请选择其他模型。";
+                    }
+                } catch (JsonProcessingException jsonEx) {
+                    logger.warn("无法解析 Ollama 的 404 错误响应体 JSON: {}", responseBody, jsonEx);
+                    if (responseBody.toLowerCase().contains("not found")) {
+                        return "抱歉，请求的模型 \"" + modelToUse + "\" 不存在或无法找到。";
+                    }
+                }
+                return "请求的资源未找到 (404)。";
+            } else if (responseBody != null && responseBody.toLowerCase().contains("failed to load model")) {
+                return "抱歉，模型 \"" + modelToUse + "\" 加载失败。请选择其他模型或联系管理员。";
+            }
+
+            return "请求处理失败: HTTP " + e.getStatusCode() + " - " + (responseBody.isEmpty() ? e.getStatusText() : responseBody);
+        } catch (RestClientResponseException e) {
+            logger.error("请求 Ollama 时发生服务端或未知错误，URL: {}, 状态码: {}, 响应体: {}", requestUrl, e.getRawStatusCode(), e.getResponseBodyAsString(), e);
+            String responseBody = e.getResponseBodyAsString();
+            if (responseBody != null && responseBody.toLowerCase().contains("failed to load model")) {
+                return "抱歉，模型 \"" + modelToUse + "\" 在服务器端加载失败。请稍后再试或联系管理员。";
+            }
+            return "与AI服务通信时发生错误: HTTP " + e.getRawStatusCode() + " - " + (responseBody.isEmpty() ? "Server Error" : responseBody);
+        } catch (Exception e) {
+            logger.error("处理 Ollama 请求时发生未知错误，URL: {}", requestUrl, e);
+            return "处理您的请求时发生网络或未知错误: " + e.getMessage();
+        }
+    }
+}

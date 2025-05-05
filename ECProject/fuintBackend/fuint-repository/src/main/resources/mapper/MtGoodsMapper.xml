@@ -67,4 +67,29 @@
         </if>
         GROUP BY g.`ID` ORDER BY SUM(o.`NUM`) DESC LIMIT 10
     </select>
+    <select id="searchForRecommendation" resultType="com.fuint.repository.model.MtGoods">
+        SELECT
+        g.ID,        <!-- ID -->
+        g.NAME,      <!-- 名称 -->
+        g.IMAGES     <!-- 图片 JSON -->
+        <!-- 如果前端还需要价格等，可以加上 g.PRICE -->
+        FROM
+        `mt_goods` g
+        WHERE
+        g.`status` = 'A'
+        <if test="merchantId != null and merchantId > 0">
+            AND g.MERCHANT_ID = #{merchantId}
+        </if>
+        <if test="storeId != null and storeId > 0">
+            AND (g.STORE_ID = #{storeId} OR g.STORE_ID = 0)
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND g.name LIKE #{keyword} <!-- 关键词模糊查询 name 字段 -->
+            <!-- 如果还需要查 GOODS_NO，可以加上 OR g.GOODS_NO = #{keyword} -->
+        </if>
+        <!-- 按相关性或默认排序，例如按 ID 或 SORT -->
+        ORDER BY
+        g.SORT ASC, g.ID DESC <!-- 示例排序 -->
+        LIMIT #{limit} <!-- 直接在 SQL 中限制数量 -->
+    </select>
 </mapper>

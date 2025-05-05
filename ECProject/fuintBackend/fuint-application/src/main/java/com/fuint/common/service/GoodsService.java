@@ -134,4 +134,6 @@ public interface GoodsService {
      * @return
      * */
     List<GoodsTopDto> getGoodsSaleTopList(Integer merchantId, Integer storeId, Date startTime, Date endTime);
+
+    List<GoodsDto> searchRecommendedGoods(String keyword, int limit, Integer storeId, Integer merchantId) throws BusinessCheckException;
 }

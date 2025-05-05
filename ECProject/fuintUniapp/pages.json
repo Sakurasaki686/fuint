@@ -15,7 +15,12 @@
       "iconPath": "static/tabbar/shop.png",
       "selectedIconPath": "static/tabbar/shop-active.png",
       "text": "微店"
-    },{
+    }, {
+      "pagePath": "pages/ai/chat",
+      "iconPath": "static/tabbar/ai.png",
+      "selectedIconPath": "static/tabbar/ai.png",
+      "text": "Muse" 
+    }, {
       "pagePath": "pages/user/index",
       "iconPath": "static/tabbar/user.png",
       "selectedIconPath": "static/tabbar/user-active.png",
@@ -329,6 +334,12 @@
       "path": "pages/coupon/receive",
       "style": {
         "navigationBarTitleText": "卡券兑换"
+      }
+    },
+    {
+      "path": "pages/ai/chat",
+      "style": {
+        "navigationBarTitleText": "Muse"
       }
     }
   ],

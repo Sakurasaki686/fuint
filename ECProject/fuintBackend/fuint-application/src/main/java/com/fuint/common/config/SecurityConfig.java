@@ -56,8 +56,9 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers(
                         "/clientApi/**",
                         "/backendApi/**",
-                        "/merchantApi/**"
-                        ).anonymous()
+                        "/merchantApi/**",
+                        "/ollama/generate" // 添加这一行，允许 /ollama/generate 匿名访问
+                ).anonymous()
                 .antMatchers(
                         HttpMethod.GET,
                         "/",
