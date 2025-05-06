@@ -117,23 +117,20 @@
     data() {
       return {
         messageList: [],
-        chatHistory: [], // 维护发送给后端的历史
+        chatHistory: [],
         inputMessage: '',
         loading: false,
         scrollTop: 0,
         typingSpeed: 30,
         currentTypingIndex: -1,
         typingTimer: null,
-        // **** 请根据你服务器实际存在的模型修改 ****
-        modelOptions: ['qwen2.5:1.5b', 'deepseek-r1:1.5b'],
+        modelOptions: ['qwen2.5:1.5b', 'deepseek-r1:1.5b', 'gemma3:1b', 'mistral:7b'],
         selectedModelIndex: 0
       }
     },
     onLoad() {
-      // 页面加载时可以做一些初始化，比如从本地存储加载历史（如果需要）
     },
     methods: {
-      // parseLinks(text) { ... } // 如果需要解析链接，保留此方法
 
       toggleThink(index) {
         const item = this.messageList[index];

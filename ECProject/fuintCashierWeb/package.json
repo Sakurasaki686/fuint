@@ -1,7 +1,7 @@
 {
   "name": "fuintCashier",
-  "version": "1.0.1",
-  "description": "fuint收银系统",
+  "version": "1.0.0",
+  "description": "AIssit收银系统",
   "author": "FSQ",
   "license": "MIT",
   "scripts": {

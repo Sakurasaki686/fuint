@@ -650,23 +650,18 @@ public class GoodsServiceImpl extends ServiceImpl<MtGoodsMapper, MtGoods> implem
         // 构造模糊查询的关键词
         String likeKeyword = "%" + keyword + "%";
 
-        // 调用新的 Mapper 方法
         List<MtGoods> goodsList = mtGoodsMapper.searchForRecommendation(likeKeyword, limit, storeId, merchantId);
 
-        // 将 MtGoods 实体列表转换为 GoodsDto 列表 (只包含需要的字段)
+        // 将 MtGoods 实体列表转换为 GoodsDto 列表
         if (goodsList == null) {
             return new ArrayList<>();
         }
 
         return goodsList.stream().map(goods -> {
             GoodsDto dto = new GoodsDto();
-            // 使用 BeanUtils 或手动复制需要的属性
-            // BeanUtils.copyProperties(goods, dto); // 简单但可能复制过多属性
             dto.setId(goods.getId());
             dto.setName(goods.getName());
-            dto.setImages(goods.getImages()); // 直接获取 images 字段
-            // 如果前端还需要价格，也复制过来
-            // dto.setPrice(goods.getPrice());
+            dto.setImages(goods.getImages());
             return dto;
         }).collect(Collectors.toList());
     }

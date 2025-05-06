@@ -41,7 +41,6 @@ public class OllamaController {
         if (prompt != null && (prompt.contains("推荐") || prompt.contains("介绍点") || prompt.contains("找一下") || prompt.contains("搜一下") || prompt.contains("搜索"))) {
             logger.info("检测到推荐/查找意图，尝试处理...");
 
-            // 延迟 3 秒
             try {
                 Thread.sleep(3000);
             } catch (InterruptedException e) {

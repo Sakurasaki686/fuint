@@ -1,7 +1,7 @@
 {
   "name": "fuintAdmin",
-  "version": "3.0.3",
-  "description": "fuint会员营销系统后台管理端",
+  "version": "1.0.0",
+  "description": "AIssit系统后台管理端",
   "author": "FSQ",
   "license": "MIT",
   "scripts": {

@@ -29,11 +29,10 @@ public class OllamaServiceImpl implements OllamaService {
     private final String ollamaApiUrl;
     private final ObjectMapper objectMapper;
 
-    // 定义完整的系统介绍，以便复用
     private static final String SYSTEM_INTRODUCTION = "本系统名为 AIssist Shop，是一个在传统系统的基础之上融合了当前非常主流的 LLM 的实体店铺会员管理和营销系统。主要功能包含 AI 对话与推荐、电子优惠券、储值卡、实体卡、集次卡（计次卡）、短信发送、储值卡、会员积分、会员等级权益体系，支付收款等会员日常营销工具。本系统适用于各类实体店铺，如零售超市、酒吧、酒店、汽车4S店、鲜花店、奶茶店、甜品店、餐饮店、农家乐等，是 AI 时代下实体店铺会员营销必备的一款利器。";
 
     public OllamaServiceImpl(@Value("${ollama.api.url}") String ollamaApiUrl) {
-        this.ollamaApiUrl = ollamaApiUrl; // 假设已包含 /api/generate
+        this.ollamaApiUrl = ollamaApiUrl;
         this.restTemplate = new RestTemplate();
 
         this.objectMapper = new ObjectMapper();
@@ -53,13 +52,13 @@ public class OllamaServiceImpl implements OllamaService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> requestBody = new HashMap<>();
-        String modelToUse = model != null && !model.isEmpty() ? model : "qwen2.5:1.5b"; // 保持你的默认模型
+        String modelToUse = model != null && !model.isEmpty() ? model : "qwen2.5:1.5b";
         requestBody.put("model", modelToUse);
 
         // 构建包含系统介绍和指令的 Prompt
         StringBuilder fullPrompt = new StringBuilder();
         fullPrompt.append("你现在是 AIssist Shop 系统的专属 AI 助手。\n");
-        fullPrompt.append(SYSTEM_INTRODUCTION).append("\n"); // 使用完整的系统介绍
+        fullPrompt.append(SYSTEM_INTRODUCTION).append("\n");
         fullPrompt.append("请利用你对 AIssist Shop 功能和适用场景的了解，像一个专业的系统助手一样，自然地回答用户的问题。\n");
         fullPrompt.append("请直接给出回答，避免提及你正在参考系统介绍。\n\n");
         fullPrompt.append("用户: ").append(prompt).append("\n");
@@ -117,16 +116,16 @@ public class OllamaServiceImpl implements OllamaService {
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> requestBody = new HashMap<>();
-        String modelToUse = model != null && !model.isEmpty() ? model : "qwen2.5:1.5b"; // 保持你的默认模型
+        String modelToUse = model != null && !model.isEmpty() ? model : "qwen2.5:1.5b";
         requestBody.put("model", modelToUse);
 
         // 构建带有指令和完整系统介绍的 Prompt
         StringBuilder fullPrompt = new StringBuilder();
 
         // 1. 设定角色并融入完整的系统知识
-        fullPrompt.append("你现在是 AIssist Shop 系统的专属 AI 助手。\n");
+        fullPrompt.append("你现在是 AIssist Shop 系统的专属 AI 助手，之后必须以友好的 AI 助手的身份与用户交流。\n");
         fullPrompt.append(SYSTEM_INTRODUCTION).append("\n"); // 使用完整的系统介绍
-        fullPrompt.append("请利用你对 AIssist Shop 功能和适用场景的了解，结合下面的对话历史，像一个专业的系统助手一样，自然地、连贯地回答用户的最后一个问题。\n");
+        fullPrompt.append("请利用你对 AIssist Shop 功能和适用场景的了解，结合下面的对话历史（如果有的话。这个是你跟用户的对话历史，为了防止你遗忘，所以给你展示了出来），像一个专业的系统助手一样，自然地、连贯地回答用户的最后一个问题。\n");
         fullPrompt.append("请直接给出回答，避免提及你正在参考系统介绍或对话历史本身。\n\n");
 
         // 2. 分隔并添加历史对话
@@ -159,7 +158,7 @@ public class OllamaServiceImpl implements OllamaService {
         requestBody.put("stream", false);
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-        String requestUrl = this.ollamaApiUrl; // 假设已包含 /api/generate
+        String requestUrl = this.ollamaApiUrl;
 
         try {
             logger.info("向 Ollama 发送带历史和指令的请求: URL={}, Model={}, History Size={}, Prompt Length={}", requestUrl, modelToUse, (history != null ? history.size() : 0), fullPrompt.length());
